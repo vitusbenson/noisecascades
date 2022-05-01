@@ -97,7 +97,7 @@ class Integrator:
 
                 t, orthant_entered, x = simulate_fpt_orthant(N_chunk, x, t, dt, dtao, c, A, L_chunk, boundary = 0.0)
 
-                if np.any(orthant_entered[:3]):
+                if np.any(orthant_entered):
                     return t, orthant_entered
             
             return np.NaN, orthant_entered

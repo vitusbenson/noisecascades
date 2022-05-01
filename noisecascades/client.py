@@ -4,6 +4,7 @@ import numpy as np
 import xarray as xr
 import zarr
 
+from tqdm import tqdm
 from pathlib import Path
 
 from noisecascades.simulate.prepare import Integrator
@@ -59,9 +60,15 @@ class ExperimentClient:
 
         self = cls(config["setup"])
 
-        for network_config in config["network_configs"]:
+        pbar_desc = ' '.join([f'{k.capitalize()}={v}' for k,v in {ax: config['network_configs'][0][ax] for ax, c in zip(config['setup']['axes'], config['setup']['chunks']) if c == 1}.items()])
+
+        pbar = tqdm(config["network_configs"], position = config["process_id"]+1, desc = pbar_desc, mininterval = 1)
+
+        for network_config in pbar:
 
             results = Integrator.integrate_networkconfig(network_config)
             
             self.save_results(network_config, results)
+
+            pbar.set_postfix({ax: network_config[ax] for ax, c in zip(config['setup']['axes'], config['setup']['chunks']) if c != 1}, refresh = False)
 

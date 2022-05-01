@@ -252,7 +252,7 @@ class ExperimentHost:
             fh.writelines(f"#SBATCH -p standard\n")
             fh.writelines(f"#SBATCH --nodes=1\n")
             fh.writelines(f"#SBATCH --ntasks=1\n")
-            fh.writelines(f"#SBATCH --cpus-per-task={int(4*self.config['setup']['n_processes'])}\n")
+            fh.writelines(f"#SBATCH --cpus-per-task={int(self.config['setup']['n_processes']) if self.config['setup']['mode'] == 'fpt_orthant' else int(4*self.config['setup']['n_processes'])}\n")
             fh.writelines(f"source ~/.bashrc\n")
             fh.writelines(f"conda activate {self.config['setup']['condaenv']}\n")
             fh.writelines(f"cd {os.path.realpath(__file__)}\n")
@@ -270,7 +270,9 @@ class ExperimentHost:
                 self.write_slurmscript()
         else:
 
-            network_configs = [{"setup": self.config["setup"], "network_configs": network_config} for network_config in self.config["network_configs"]]
+            print(f"Running experiment {self.config['setup']['experimentname']} on Node {node_idx}")
+
+            network_configs = [{"setup": self.config["setup"], "network_configs": network_config, "process_id": i} for i, network_config in enumerate(self.config["network_configs"])]
 
             if self.config["setup"]["n_processes"] <= 1:
                 for network_config in network_configs:
@@ -278,7 +280,7 @@ class ExperimentHost:
 
             else:
                 with ProcessPoolExecutor(max_workers = self.config["setup"]["n_processes"]) as pool:
-                    _ = list(tqdm(pool.map(ExperimentClient.run_simulations, network_configs), total = len(network_configs)))
+                    _ = list(pool.map(ExperimentClient.run_simulations, network_configs))
 
 
 if __name__ == "__main__":
