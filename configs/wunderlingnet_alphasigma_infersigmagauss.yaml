@@ -1,0 +1,33 @@
+setup:
+  mode: "fpt_orthant"
+  n_processes: 1
+  n_nodes: 1
+  axes: ["sigmas", "seed"]
+  chunks: [Null, Null]
+  dimension_names: ["fpt", "orthant"]
+  outpath: "experiments/"
+  condaenv: pycascades
+base_config:
+  type: "wunderling"
+  dt: 10.
+  Tend: 1000000
+  x_init: [-1, -1, -1]
+  GMT: 0.0
+  strength: 0.0
+  Tlim: [1.5, 4.0, 1.5]
+  pf_wais_to_gis: 0.1
+  pf_thc_to_gis: -0.5
+  pf_gis_to_thc: 0.5
+  pf_wais_to_thc: 0.12
+  pf_thc_to_wais: 0.05
+  pf_gis_to_wais: 0.5
+  #pf_thc_to_amaz: 0.3
+  k_wais_to_thc: -1.
+  #k_thc_to_amaz: -1.
+  alphas: 2.0
+  sigmas: 0.0
+  seed: 42
+param_grid:
+  n_seeds: 500
+  orthogonal:
+    sigmas: [0.13, 0.14, 0.15, 0.16, 0.17, 0.18, 0.19, 0.2, 0.21, 0.22, 0.23, 0.24, 0.25, 0.26, 0.27, 0.28, 0.29, 0.3]

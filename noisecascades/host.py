@@ -164,6 +164,7 @@ class ExperimentHost:
                     for curr_chunk_configs in curr_configs:
                         next_chunk_configs = []
                         for curr_config in curr_chunk_configs:
+                            curr_config = deepcopy(curr_config)
                             curr_config[curr_ax] = value
                             next_chunk_configs.append(curr_config)
                         next_configs.append(next_chunk_configs)
@@ -246,7 +247,7 @@ class ExperimentHost:
         slurmout_path = str(experimentpath/f"{experimentname}-%A-%a.out")
         with open(slurmscript_path, "w+") as fh:
             fh.writelines("#!/bin/bash\n")
-            fh.writelines(f"#SBATCH --array=0-{int(self.config['setup']['n_nodes'])}\n")
+            fh.writelines(f"#SBATCH --array=0-{int(self.config['setup']['n_nodes'])-1}\n")
             fh.writelines(f"#SBATCH --job-name {experimentname}\n")
             fh.writelines(f"#SBATCH -o {slurmout_path}\n")
             fh.writelines(f"#SBATCH -p standard\n")
@@ -266,14 +267,14 @@ class ExperimentHost:
         if node_idx == -1:
             self.build_zarr_array()
 
-            if self.config["setup"]["n_nodes"] > 1:
+            if self.config["setup"]["n_nodes"] > 0:
                 self.write_slurmscript()
         else:
 
             print(f"Running experiment {self.config['setup']['experimentname']} on Node {node_idx}")
 
             network_configs = [{"setup": self.config["setup"], "network_configs": network_config, "process_id": i} for i, network_config in enumerate(self.config["network_configs"])]
-
+            
             if self.config["setup"]["n_processes"] <= 1:
                 for network_config in network_configs:
                     ExperimentClient.run_simulations(network_config)
