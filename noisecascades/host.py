@@ -256,8 +256,8 @@ class ExperimentHost:
             fh.writelines(f"#SBATCH --cpus-per-task={int(self.config['setup']['n_processes']) if self.config['setup']['mode'] == 'fpt_orthant' else int(4*self.config['setup']['n_processes'])}\n")
             fh.writelines(f"source ~/.bashrc\n")
             fh.writelines(f"conda activate {self.config['setup']['condaenv']}\n")
-            fh.writelines(f"cd {os.path.realpath(__file__)}\n")
-            fh.writelines(f"python host.py {str(self.configpath)} $SLURM_ARRAY_TASK_ID\n")
+            fh.writelines(f"cd {os.getcwd()}\n")
+            fh.writelines(f"python {os.path.relpath(os.path.realpath(__file__), start = os.getcwd())} {str(self.configpath.resolve())} $SLURM_ARRAY_TASK_ID\n")
 
     @classmethod
     def run_experiment(cls, configpath, node_idx):
