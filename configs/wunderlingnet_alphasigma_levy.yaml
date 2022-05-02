@@ -28,7 +28,7 @@ base_config:
   sigmas: 0.0
   seed: 42
 param_grid:
-  n_seeds: 10
+  n_seeds: 500
   zip:
     GMT: [0.0, 3.0]
     strength: [0.0, 0.75]
