@@ -2,8 +2,8 @@
 import numpy as np
 from scipy.stats import levy_stable
 
-from noisecascades.simulate.timeseries import simulate_timeseries
-from noisecascades.simulate.fpt import simulate_fpt_orthant
+from noisecascades.simulate.timeseries import simulate_timeseries, simulate_timeseries_logdt, simulate_timeseries_euler_noinit
+from noisecascades.simulate.fpt import simulate_fpt_orthant, simulate_fpt_orthant_logdt
 
 class Integrator:
 
@@ -20,8 +20,14 @@ class Integrator:
         A = np.array(A).astype(np.float64)
 
         n = len(x_init)
-        N = int(Tend // dt) + 1
-        dtao = dt / taos
+
+        if isinstance(dt, list):
+            dt = np.diff(np.logspace(start = dt[0], stop = dt[1], num = dt[2], base = dt[3]),prepend = [0,0])
+            N = len(dt)
+            dtao = (dt[:,None] / taos).T
+        else:
+            N = int(Tend // dt) + 1
+            dtao = dt / taos
 
         if not isinstance(alphas, np.ndarray):
             if not isinstance(alphas, list):
@@ -48,7 +54,10 @@ class Integrator:
         L = np.zeros((N,n))
         for i in range(n):
             if sigmas[i] > 0:
-                L[:,i] = sigmas[i] * (dtao[i] ** (1/alphas[i])) * levy_stable.rvs(alphas[i], 0.0, size=N, random_state = self.rng)
+                if alphas[i] == 2.0:
+                    L[:,i] = sigmas[i] * (dtao[i] ** (1/2)) * np.sqrt(2) * self.rng.standard_normal(N)
+                else:
+                    L[:,i] = sigmas[i] * (dtao[i] ** (1/alphas[i])) * levy_stable.rvs(alphas[i], 0.0, size=N, random_state = self.rng)
         
         L[np.abs(L) > 1e12] = (np.sign(L) * 1e12)[np.abs(L) > 1e12]
         L[np.isinf(L)] = (np.sign(L) * 1e12)[np.isinf(L)]
@@ -76,7 +85,35 @@ class Integrator:
             t = 0.0
             ts = np.zeros(N)
 
-            ts, xs = simulate_timeseries(N, x_init, xs, t, ts, dt, dtao, c, A, L)
+            if len(dtao.shape) > 1:
+                ts, xs = simulate_timeseries_logdt(N, x_init, xs, t, ts, dt, dtao, c, A, L)
+            else:
+                ts, xs = simulate_timeseries(N, x_init, xs, t, ts, dt, dtao, c, A, L, method = kwargs["int_method"] if "int_method" in kwargs else "semi_impl")
+
+            return ts, xs
+
+        elif mode == "varyforce":
+
+            cs = kwargs["cs"]
+            n_chunks = cs.shape[0]
+            N_chunk = N // n_chunks
+
+            x = x_init
+            xs = np.full((N,n), np.NaN)
+            #xs[0,:] = x
+            t = 0.0
+            ts = np.zeros(N)
+
+            for i_chunk in range(n_chunks):
+                L_chunk = self.generate_noise(n, N_chunk, dtao, alphas, sigmas)
+                
+                #breakpoint()
+
+                #ts[i_chunk*N_chunk+1:(i_chunk+1)*N_chunk+1], xs[i_chunk*N_chunk+1:(i_chunk+1)*N_chunk+1] = simulate_timeseries_euler_noinit(N_chunk, x, xs[i_chunk*N_chunk+1:(i_chunk+1)*N_chunk+1], t, ts[i_chunk*N_chunk+1:(i_chunk+1)*N_chunk+1], dt, dtao, cs[i_chunk,:,:], A, L_chunk)
+
+                ts[i_chunk*N_chunk:(i_chunk+1)*N_chunk], xs[i_chunk*N_chunk:(i_chunk+1)*N_chunk] = simulate_timeseries(N_chunk, x, xs[i_chunk*N_chunk:(i_chunk+1)*N_chunk], t, ts[i_chunk*N_chunk:(i_chunk+1)*N_chunk], dt, dtao, cs[i_chunk,:,:], A, L_chunk)
+
+                x = xs[(i_chunk+1)*N_chunk -1]
 
             return ts, xs
 
@@ -92,10 +129,14 @@ class Integrator:
             for i_chunk in range(n_chunks):
 
                 N_chunk = min(1000, N - i_chunk * 1000)
-
-                L_chunk = self.generate_noise(n, N_chunk, dtao, alphas, sigmas)
-
-                t, orthant_entered, x = simulate_fpt_orthant(N_chunk, x, t, dt, dtao, c, A, L_chunk, boundary = 0.0)
+                
+                if len(dtao.shape) > 1:
+                    L_chunk = self.generate_noise(n, N_chunk, dtao[:,i_chunk*1000:(i_chunk+1)*1000], alphas, sigmas)
+                    
+                    t, orthant_entered, x = simulate_fpt_orthant_logdt(N_chunk, x, t, dt[i_chunk*1000:(i_chunk+1)*1000], dtao[:,i_chunk*1000:(i_chunk+1)*1000], c, A, L_chunk, boundary = 0.0)
+                else:
+                    L_chunk = self.generate_noise(n, N_chunk, dtao, alphas, sigmas)
+                    t, orthant_entered, x = simulate_fpt_orthant(N_chunk, x, t, dt, dtao, c, A, L_chunk, boundary = 0.0)
 
                 if np.any(orthant_entered):
                     return t, orthant_entered

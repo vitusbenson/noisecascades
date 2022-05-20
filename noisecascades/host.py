@@ -69,13 +69,41 @@ class ExperimentHost:
             network_config["c"] = c
 
         elif network_config["type"] == "ditlevsen":
-            # TODO
-            pass
+
+            h = np.array(network_config["h"])
+            delta = network_config["delta"] if "delta" in network_config else 1
+            c = np.ones((len(h), 4))
+            c[:,0] = 4/(delta**4)
+            c[:,1] = h/(delta**3)
+            c[:,2] = -8/(delta**2)
+            c[:,3] = -3*h/delta
+
+            network_config["c"] = c
+            network_config["A"] = np.array(network_config["A"])
+
         elif network_config["type"] == "custom":
-            network_config["A"] = np.array(A)
-            network_config["c"] = np.array[c]
+            network_config["A"] = np.array(network_config["A"])
+            network_config["c"] = np.array(network_config["c"])
         else:
             pass
+            
+        if network_config["mode"] == "varyforce":
+            if network_config["type"] == "wunderling":
+                GMTs = network_config["GMTs"]
+                cs = np.stack(len(GMTs)*[network_config["c"]], axis = 0)
+                for i in range(len(Tlim)):
+                    cs[:,i,3] = np.sqrt(4 / 27) * GMTs / Tlim[i] + A.sum(1)
+            
+            elif network_config["type"] == "ditlevsen":
+                hs = np.array(network_config["hs"])
+                cs = np.stack(hs.shape[0]*[network_config["c"]], axis = 0)
+                cs[:,:,1] = hs/(delta**3)
+                cs[:,:,3] = -3*hs/delta
+
+            else:
+                cs = network_config["cs"]
+            
+            network_config["cs"] = np.array(cs)
 
     def parse_config(self, node_idx):
         
@@ -106,6 +134,9 @@ class ExperimentHost:
         across_chunk_axes = [a for a, c in zip(config["setup"]["axes"], config["setup"]["chunks"]) if c == 1]
         within_chunk_axes = [a for a, c in zip(config["setup"]["axes"], config["setup"]["chunks"]) if c != 1]
 
+        if n_seeds > 0:
+            orthogonal_grid["seed"] = list(range(n_seeds))
+
         curr_configs = [baseconfig]
 
         for curr_ax in within_chunk_axes:
@@ -120,25 +151,28 @@ class ExperimentHost:
                             curr_config[param] = value
                         curr_config[zip_id] = zip_id
                         next_configs.append(curr_configs)
-            elif curr_ax == "seed":
-                next_configs = curr_configs
+            # elif curr_ax == "seed":
+            #     next_configs = curr_configs
             else:
-                for value in orthogonal_grid[curr_ax]:
-                    for curr_config in curr_configs:
-                        curr_config = deepcopy(curr_config)
-                        curr_config[curr_ax] = value
-                        next_configs.append(curr_config)
+                if curr_ax in orthogonal_grid:
+                    for value in orthogonal_grid[curr_ax]:
+                        for curr_config in curr_configs:
+                            curr_config = deepcopy(curr_config)
+                            curr_config[curr_ax] = value
+                            next_configs.append(curr_config)
+                else:
+                    next_configs = curr_configs
 
             curr_configs = next_configs
 
-        if n_seeds > 0:
-            next_configs = []
-            for seed in range(n_seeds):
-                for curr_config in curr_configs:
-                    curr_config = deepcopy(curr_config)
-                    curr_config["seed"] = seed
-                    next_configs.append(curr_config)
-            curr_configs = next_configs
+        # if n_seeds > 0:
+        #     next_configs = []
+        #     for seed in range(n_seeds):
+        #         for curr_config in curr_configs:
+        #             curr_config = deepcopy(curr_config)
+        #             curr_config["seed"] = seed
+        #             next_configs.append(curr_config)
+        #     curr_configs = next_configs
 
 
         curr_configs = [curr_configs]
@@ -160,14 +194,17 @@ class ExperimentHost:
                         next_configs.append(next_chunk_configs)
                 
             else:
-                for value in orthogonal_grid[curr_ax]:
-                    for curr_chunk_configs in curr_configs:
-                        next_chunk_configs = []
-                        for curr_config in curr_chunk_configs:
-                            curr_config = deepcopy(curr_config)
-                            curr_config[curr_ax] = value
-                            next_chunk_configs.append(curr_config)
-                        next_configs.append(next_chunk_configs)
+                if curr_ax in orthogonal_grid:
+                    for value in orthogonal_grid[curr_ax]:
+                        for curr_chunk_configs in curr_configs:
+                            next_chunk_configs = []
+                            for curr_config in curr_chunk_configs:
+                                curr_config = deepcopy(curr_config)
+                                curr_config[curr_ax] = value
+                                next_chunk_configs.append(curr_config)
+                            next_configs.append(next_chunk_configs)
+                else:
+                    next_configs = curr_configs
 
             curr_configs = next_configs
 
@@ -215,12 +252,21 @@ class ExperimentHost:
             else:
                 if axis in orthogonal_grid:
                     coords[axis] = np.array(sorted(orthogonal_grid[axis]))
+                elif axis in ["t", "time"] and self.config["setup"]["mode"] in ["timeseries", "varyforce"]:
+                    dt = self.config["base_config"]["dt"] if "dt" in self.config["base_config"] else 10.
+                    Tend = self.config["base_config"]["Tend"] if "Tend" in self.config["base_config"] else 100000
+                    if isinstance(dt, list):
+                        ts = np.insert(np.logspace(start = dt[0], stop = dt[1], num = dt[2], base = dt[3]), 0, 0.)
+                    else:
+                        N = int(Tend // dt) + 1
+                        ts = np.arange(0, (N+3)*dt, dt)[:N]
+                    
+                    coords[axis] = ts
             
             if axis in coords:
                 shape += (len(coords[axis]), )
             else:
                 print(f"Warning: {axis} not in coords.")
-
         
         print("building dummy")
         ds = xr.Dataset(coords = coords)

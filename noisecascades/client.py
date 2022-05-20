@@ -35,7 +35,7 @@ class ExperimentClient:
         coord_idxs = self.get_coord_idxs(network_config)
         vars = self.config["dimension_names"]
 
-        if self.mode == "timeseries":
+        if self.mode in ["timeseries", "varyforce"]:
 
             _, xs = results
 
@@ -70,5 +70,5 @@ class ExperimentClient:
             
             self.save_results(network_config, results)
 
-            pbar.set_postfix({ax: network_config[ax] for ax, c in zip(config['setup']['axes'], config['setup']['chunks']) if c != 1}, refresh = False)
+            pbar.set_postfix({ax: network_config[ax] for ax, c in zip(config['setup']['axes'], config['setup']['chunks']) if c != 1 and ax in network_config}, refresh = False)
 

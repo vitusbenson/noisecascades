@@ -1,0 +1,28 @@
+setup:
+  mode: "fpt_orthant"
+  n_processes: 4
+  n_nodes: 1
+  axes: ["sigmas", "seed"]
+  chunks: [1, Null]
+  dimension_names: ["fpt", "orthant"]
+  outpath: "experiments/"
+  condaenv: pycascades
+base_config:
+  type: "custom"
+  dt: 0.1
+  Tend: 1000000
+  x_init: [-1]
+  taos: [1.]
+  c: [[0.25, 0.0, -0.5, 0.0]]
+  A: [[0.0]]
+  alphas: 2.0
+  sigmas: 0.0
+  seed: 42
+param_grid:
+  n_seeds: 1000
+  orthogonal:
+    sigmas: [0.15279588, 0.15358951, 0.1536891 , 0.15521612, 0.16097957,
+       0.16264511, 0.16266186, 0.1636828 , 0.17410954, 0.17993431,
+       0.17995863, 0.18336056, 0.18377737, 0.18563993, 0.1997325 ,
+       0.20216114, 0.21474767, 0.21715337, 0.24202912, 0.27107338,
+       0.30719633, 0.35811207, 0.44331628]
