@@ -2,7 +2,7 @@
 import numpy as np
 from scipy.stats import levy_stable
 
-from noisecascades.simulate.timeseries import simulate_timeseries, simulate_timeseries_logdt, simulate_timeseries_euler_noinit
+from noisecascades.simulate.timeseries import simulate_timeseries, simulate_timeseries_logdt, simulate_timeseries_noinit
 from noisecascades.simulate.fpt import simulate_fpt_orthant, simulate_fpt_orthant_logdt
 
 class Integrator:
@@ -86,9 +86,9 @@ class Integrator:
             ts = np.zeros(N)
 
             if len(dtao.shape) > 1:
-                ts, xs = simulate_timeseries_logdt(N, x_init, xs, t, ts, dt, dtao, c, A, L)
+                ts, xs = simulate_timeseries_logdt(N, x_init, xs, t, ts, dt, dtao, c, A, L, method = kwargs["int_method"] if "int_method" in kwargs else "semi_impl_cased")
             else:
-                ts, xs = simulate_timeseries(N, x_init, xs, t, ts, dt, dtao, c, A, L, method = kwargs["int_method"] if "int_method" in kwargs else "semi_impl")
+                ts, xs = simulate_timeseries(N, x_init, xs, t, ts, dt, dtao, c, A, L, method = kwargs["int_method"] if "int_method" in kwargs else "semi_impl_cased")
 
             return ts, xs
 
@@ -111,7 +111,7 @@ class Integrator:
 
                 #ts[i_chunk*N_chunk+1:(i_chunk+1)*N_chunk+1], xs[i_chunk*N_chunk+1:(i_chunk+1)*N_chunk+1] = simulate_timeseries_euler_noinit(N_chunk, x, xs[i_chunk*N_chunk+1:(i_chunk+1)*N_chunk+1], t, ts[i_chunk*N_chunk+1:(i_chunk+1)*N_chunk+1], dt, dtao, cs[i_chunk,:,:], A, L_chunk)
 
-                ts[i_chunk*N_chunk:(i_chunk+1)*N_chunk], xs[i_chunk*N_chunk:(i_chunk+1)*N_chunk] = simulate_timeseries(N_chunk, x, xs[i_chunk*N_chunk:(i_chunk+1)*N_chunk], t, ts[i_chunk*N_chunk:(i_chunk+1)*N_chunk], dt, dtao, cs[i_chunk,:,:], A, L_chunk)
+                ts[i_chunk*N_chunk:(i_chunk+1)*N_chunk], xs[i_chunk*N_chunk:(i_chunk+1)*N_chunk] = simulate_timeseries(N_chunk, x, xs[i_chunk*N_chunk:(i_chunk+1)*N_chunk], t, ts[i_chunk*N_chunk:(i_chunk+1)*N_chunk], dt, dtao, cs[i_chunk,:,:], A, L_chunk, method = kwargs["int_method"] if "int_method" in kwargs else "semi_impl_cased")
 
                 x = xs[(i_chunk+1)*N_chunk -1]
 
@@ -133,10 +133,10 @@ class Integrator:
                 if len(dtao.shape) > 1:
                     L_chunk = self.generate_noise(n, N_chunk, dtao[:,i_chunk*1000:(i_chunk+1)*1000], alphas, sigmas)
                     
-                    t, orthant_entered, x = simulate_fpt_orthant_logdt(N_chunk, x, t, dt[i_chunk*1000:(i_chunk+1)*1000], dtao[:,i_chunk*1000:(i_chunk+1)*1000], c, A, L_chunk, boundary = 0.0)
+                    t, orthant_entered, x = simulate_fpt_orthant_logdt(N_chunk, x, t, dt[i_chunk*1000:(i_chunk+1)*1000], dtao[:,i_chunk*1000:(i_chunk+1)*1000], c, A, L_chunk, boundary = 0.0, method = kwargs["int_method"] if "int_method" in kwargs else "semi_impl_cased")
                 else:
                     L_chunk = self.generate_noise(n, N_chunk, dtao, alphas, sigmas)
-                    t, orthant_entered, x = simulate_fpt_orthant(N_chunk, x, t, dt, dtao, c, A, L_chunk, boundary = 0.0)
+                    t, orthant_entered, x = simulate_fpt_orthant(N_chunk, x, t, dt, dtao, c, A, L_chunk, boundary = 0.0, method = kwargs["int_method"] if "int_method" in kwargs else "semi_impl_cased")
 
                 if np.any(orthant_entered):
                     return t, orthant_entered
