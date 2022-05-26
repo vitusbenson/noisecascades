@@ -110,8 +110,6 @@ def semi_impl_cased_step(x, dtao, c, A, L):
     else:
         transp = 0*x
         
-    
-
     for j in range(len(x)):
         if dtao[j] > 0.1:
             case_boundary = 1.0

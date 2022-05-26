@@ -62,8 +62,8 @@ class ExperimentHost:
             c = np.ones((len(Tlim), 4))
             c[:,0] = 0.25
             c[:,1] = 0
-            c[:,2] = -1
-            c[:,3] = np.sqrt(4 / 27) * GMT / Tlim + A.sum(1)
+            c[:,2] = -0.5
+            c[:,3] = -(np.sqrt(4 / 27) * GMT / Tlim) + A.sum(1)
 
             network_config["A"] = A
             network_config["c"] = c
@@ -89,10 +89,10 @@ class ExperimentHost:
             
         if network_config["mode"] == "varyforce":
             if network_config["type"] == "wunderling":
-                GMTs = network_config["GMTs"]
+                GMTs = np.array(network_config["GMTs"])
                 cs = np.stack(len(GMTs)*[network_config["c"]], axis = 0)
                 for i in range(len(Tlim)):
-                    cs[:,i,3] = np.sqrt(4 / 27) * GMTs / Tlim[i] + A.sum(1)
+                    cs[:,i,3] = -(np.sqrt(4 / 27) * GMTs / Tlim[i]) + A.sum(1)[i]
             
             elif network_config["type"] == "ditlevsen":
                 hs = np.array(network_config["hs"])
