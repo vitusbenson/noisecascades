@@ -114,6 +114,7 @@ class Integrator:
                 ts[i_chunk*N_chunk:(i_chunk+1)*N_chunk], xs[i_chunk*N_chunk:(i_chunk+1)*N_chunk] = simulate_timeseries(N_chunk, x, xs[i_chunk*N_chunk:(i_chunk+1)*N_chunk], t, ts[i_chunk*N_chunk:(i_chunk+1)*N_chunk], dt, dtao, cs[i_chunk,:,:], A, L_chunk, method = kwargs["int_method"] if "int_method" in kwargs else "semi_impl_cased")
 
                 x = xs[(i_chunk+1)*N_chunk -1]
+                t = ts[(i_chunk+1)*N_chunk -1]
 
             return ts, xs
 
