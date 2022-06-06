@@ -34,3 +34,6 @@ def estimate_levy_sigma(alpha, gauss_sigma, barrier_height = 0.25, barrier_dista
     else:
         levy_sigma = ((barrier_distance**alpha)*2*np.sqrt(2)*gamma(1-alpha)*np.cos(np.pi*alpha/2) / (np.pi*np.exp(1 / ((1/barrier_height) * gauss_sigma**2))))**(1/alpha)
     return levy_sigma
+
+
+

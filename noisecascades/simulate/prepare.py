@@ -49,7 +49,7 @@ class Integrator:
 
         return dt, Tend, x_init, c, A, alphas, sigmas, taos, n, N, dtao
     
-    def generate_noise(self, n, N, dtao, alphas, sigmas):
+    def generate_noise(self, n, N, dtao, alphas, sigmas, extra_gauss_sigma = None):
 
         L = np.zeros((N,n))
         for i in range(n):
@@ -58,10 +58,14 @@ class Integrator:
                     L[:,i] = sigmas[i] * (dtao[i] ** (1/2)) * np.sqrt(2) * self.rng.standard_normal(N)
                 else:
                     L[:,i] = sigmas[i] * (dtao[i] ** (1/alphas[i])) * levy_stable.rvs(alphas[i], 0.0, size=N, random_state = self.rng)
-        
+
         L[np.abs(L) > 1e12] = (np.sign(L) * 1e12)[np.abs(L) > 1e12]
         L[np.isinf(L)] = (np.sign(L) * 1e12)[np.isinf(L)]
         L[np.isnan(L)] = 0.0
+
+        if extra_gauss_sigma is not None:
+            for i in range(n):
+                L[:,i] += extra_gauss_sigma * (dtao[i] ** (1/2)) * np.sqrt(2) * self.rng.standard_normal(N)
 
         return L
 
@@ -79,7 +83,7 @@ class Integrator:
 
         if mode == "timeseries":
             
-            L = self.generate_noise(n, N, dtao, alphas, sigmas)
+            L = self.generate_noise(n, N, dtao, alphas, sigmas, extra_gauss_sigma = kwargs["extra_gauss_sigma"] if "extra_gauss_sigma" in kwargs else None)
 
             xs = np.zeros((N,n))
             t = 0.0
@@ -105,7 +109,7 @@ class Integrator:
             ts = np.zeros(N)
 
             for i_chunk in range(n_chunks):
-                L_chunk = self.generate_noise(n, N_chunk, dtao, alphas, sigmas)
+                L_chunk = self.generate_noise(n, N_chunk, dtao, alphas, sigmas, extra_gauss_sigma = kwargs["extra_gauss_sigma"] if "extra_gauss_sigma" in kwargs else None)
                 
                 #breakpoint()
 
@@ -132,11 +136,11 @@ class Integrator:
                 N_chunk = min(1000, N - i_chunk * 1000)
                 
                 if len(dtao.shape) > 1:
-                    L_chunk = self.generate_noise(n, N_chunk, dtao[:,i_chunk*1000:(i_chunk+1)*1000], alphas, sigmas)
+                    L_chunk = self.generate_noise(n, N_chunk, dtao[:,i_chunk*1000:(i_chunk+1)*1000], alphas, sigmas, extra_gauss_sigma = kwargs["extra_gauss_sigma"] if "extra_gauss_sigma" in kwargs else None)
                     
                     t, orthant_entered, x = simulate_fpt_orthant_logdt(N_chunk, x, t, dt[i_chunk*1000:(i_chunk+1)*1000], dtao[:,i_chunk*1000:(i_chunk+1)*1000], c, A, L_chunk, boundary = 0.0, method = kwargs["int_method"] if "int_method" in kwargs else "semi_impl_cased")
                 else:
-                    L_chunk = self.generate_noise(n, N_chunk, dtao, alphas, sigmas)
+                    L_chunk = self.generate_noise(n, N_chunk, dtao, alphas, sigmas, extra_gauss_sigma = kwargs["extra_gauss_sigma"] if "extra_gauss_sigma" in kwargs else None)
                     t, orthant_entered, x = simulate_fpt_orthant(N_chunk, x, t, dt, dtao, c, A, L_chunk, boundary = 0.0, method = kwargs["int_method"] if "int_method" in kwargs else "semi_impl_cased")
 
                 if np.any(orthant_entered):
