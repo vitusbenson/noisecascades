@@ -16,6 +16,7 @@
 #   - Repeat: take levy sigma such that gaussian part of noise keeps same strength (see Imkeller&P....)
 # 3) Repeat the above for autocorrelated noise
 
+from curses import window
 import numpy as np
 from numba import jit
 import xarray as xr
@@ -98,16 +99,22 @@ def detrend(x, axis):
     # p = np.polyfit(t, x_reshaped, 1)
     # return np.moveaxis((x_reshaped - (p[0][:,None]*t).T - p[1]).T.reshape(*s_moved), -1, axis)
 
-def std_window_detrended(x, axis):
+def std_window_detrended(x, axis, detrend = True):
     if not isinstance(axis, int):
         axis = axis[0]
-    x_detrend = detrend(x, axis)
+    if detrend:
+        x_detrend = detrend(x, axis)
+    else:
+        x_detrend = x
     return np.where(np.count_nonzero(np.isnan(x), axis = axis) == 0, np.nanstd(x_detrend, axis = axis), np.NaN)
 
-def ar1_window_detrended(x, axis):
+def ar1_window_detrended(x, axis, detrend = True):
     if not isinstance(axis, int):
         axis = axis[0]
-    x_detrend = detrend(x, axis)
+    if detrend:
+        x_detrend = detrend(x, axis)
+    else:
+        x_detrend = x
     x_detrend_moved = np.moveaxis(x_detrend, axis, 0)
     x_t_centered = x_detrend_moved[1:] - x_detrend_moved[1:].mean(axis = 0)
     x_tm1_centered = x_detrend_moved[:-1] - x_detrend_moved[:-1].mean(axis = 0)
@@ -123,10 +130,13 @@ def ar1_window_detrended(x, axis):
     return np.where(np.count_nonzero(np.isnan(x), axis = axis) == 0, covar/(np.sqrt(var_t*var_tm1) + 1e-6), np.NaN)
     #np.corrcoef(x_detrend[1:], x_detrend[:-1])[0,1]
 
-def lambda_window_detrended(x, axis):
+def lambda_window_detrended(x, axis, detrend = True):
     if not isinstance(axis, int):
         axis = axis[0]
-    x_detrend = detrend(x, axis)
+    if detrend:
+        x_detrend = detrend(x, axis)
+    else:
+        x_detrend = x
     dxdt = np.diff(x_detrend, axis = axis)
     x_detrend_moved = np.moveaxis(x_detrend, axis, 0)[:-1]
     dxdt_moved = np.moveaxis(dxdt, axis, 0)
@@ -186,33 +196,34 @@ def kendall_tau_test(ts, n_surrogates, surrogate_type = 'fourier', statistic_typ
     # From https://github.com/niklasboers/AMOC_EWS/blob/main/EWS_functions.py
     ts = ts[~np.isnan(ts)]
     tlen = ts.shape[0]
+    if tlen < 2:
+        return np.NaN
 
-    if surrogate_type == 'fourier':
-        tsf = ts - ts.mean()
-        nts = fourrier_surrogates(tsf, n_surrogates)
-    # elif mode1 == 'shuffle':
-    #     nts = shuffle_surrogates(ts, ns)
     stat = np.zeros(n_surrogates)
-    tlen = nts.shape[1]
-    if statistic_type == 'linear':
-        tau = st.linregress(np.arange(ts.shape[0]), ts)[0]
+    if surrogate_type == 'fourier':
         for i in range(n_surrogates):
-            stat[i] = st.linregress(np.arange(tlen), nts[i])[0]
-    elif statistic_type == 'kt':
-        tau = st.kendalltau(np.arange(ts.shape[0]), ts)[0]
-        for i in range(n_surrogates):
-            stat[i] = st.kendalltau(np.arange(tlen), nts[i])[0]
+            tsf = ts - ts.mean()
+            nts = fourrier_surrogates(tsf, 1)
+        # elif mode1 == 'shuffle':
+        #     nts = shuffle_surrogates(ts, ns)
+            tlen = nts.shape[1]
+            if statistic_type == 'linear':
+                tau = st.linregress(np.arange(ts.shape[0]), ts)[0]
+                stat[i] = st.linregress(np.arange(tlen), nts[0])[0]
+            elif statistic_type == 'kt':
+                tau = st.kendalltau(np.arange(ts.shape[0]), ts)[0]
+                stat[i] = st.kendalltau(np.arange(tlen), nts[0])[0]
     p = 1 - st.percentileofscore(stat, tau) / 100.
     return p
 
-def get_ews(cube, window_size = 500000, downsample_factor = 10000, var_axis = "x", time_axis = "t", use_vectorized = True):
+def get_ews(cube, window_size = 500000, downsample_factor = 10000, var_axis = "x", time_axis = "t", use_vectorized = True, center = False, detrend = True):
 
-    rolling_cube = cube[var_axis].rolling({time_axis: window_size}).construct("window").isel({time_axis: slice(window_size,-window_size,downsample_factor)}).chunk({time_axis:10, "window":-1})
+    rolling_cube = cube[var_axis].rolling({time_axis: window_size}, center = center).construct("window").isel({time_axis: slice(window_size if not center else window_size//2,-window_size if not center else -window_size//2,downsample_factor)}).chunk({time_axis:10, "window":-1})
     
     if use_vectorized:
-        std = rolling_cube.reduce(std_window_detrended, dim = "window").to_dataset(name = "StdDev")
-        ar1 = rolling_cube.reduce(ar1_window_detrended, dim = "window").to_dataset(name = "AR1")
-        l = rolling_cube.reduce(lambda_window_detrended, dim = "window").to_dataset(name = "Lambda")
+        std = rolling_cube.reduce(std_window_detrended, dim = "window", detrend = detrend).to_dataset(name = "StdDev")
+        ar1 = rolling_cube.reduce(ar1_window_detrended, dim = "window", detrend = detrend).to_dataset(name = "AR1")
+        l = rolling_cube.reduce(lambda_window_detrended, dim = "window", detrend = detrend).to_dataset(name = "Lambda")
     else:
         std = xr.apply_ufunc(std_window_detrended_nonvec, rolling_cube, input_core_dims=[["window"]], vectorize = True, dask = "parallelized", output_dtypes=["float64"])
         ar1 = xr.apply_ufunc(ar1_window_detrended_nonvec, rolling_cube, input_core_dims=[["window"]], vectorize = True, dask = "parallelized", output_dtypes=["float64"])
