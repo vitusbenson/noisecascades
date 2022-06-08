@@ -199,6 +199,11 @@ def kendall_tau_test(ts, n_surrogates, surrogate_type = 'fourier', statistic_typ
     if tlen < 2:
         return np.NaN
 
+    if statistic_type == 'linear':
+        tau = st.linregress(np.arange(ts.shape[0]), ts)[0]
+    elif statistic_type == 'kt':
+        tau = st.kendalltau(np.arange(ts.shape[0]), ts)[0]
+
     stat = np.zeros(n_surrogates)
     if surrogate_type == 'fourier':
         for i in range(n_surrogates):
@@ -208,11 +213,10 @@ def kendall_tau_test(ts, n_surrogates, surrogate_type = 'fourier', statistic_typ
         #     nts = shuffle_surrogates(ts, ns)
             tlen = nts.shape[1]
             if statistic_type == 'linear':
-                tau = st.linregress(np.arange(ts.shape[0]), ts)[0]
                 stat[i] = st.linregress(np.arange(tlen), nts[0])[0]
             elif statistic_type == 'kt':
-                tau = st.kendalltau(np.arange(ts.shape[0]), ts)[0]
                 stat[i] = st.kendalltau(np.arange(tlen), nts[0])[0]
+    
     p = 1 - st.percentileofscore(stat, tau) / 100.
     return p
 
