@@ -53,18 +53,27 @@ def detrend_nonvec(x):
     t = np.linspace(0,1,len(x))
     return x - np.polyval(np.polyfit(t[~np.isnan(x)], x[~np.isnan(x)], 1),t)
 
-def std_window_detrended_nonvec(x):
-    x_detrend = detrend_nonvec(x)
+def std_window_detrended_nonvec(x, detrend = True):
+    if detrend:
+        x_detrend = detrend_nonvec(x)
+    else:
+        x_detrend = x
     return np.nanstd(x_detrend)
 
-def ar1_window_detrended_nonvec(x):
-    x_detrend = detrend_nonvec(x)
+def ar1_window_detrended_nonvec(x, detrend = True):
+    if detrend:
+        x_detrend = detrend_nonvec(x)
+    else:
+        x_detrend = x
     x_t_centered = x_detrend[1:] - x_detrend[1:].mean()
     x_tm1_centered = x_detrend[:-1] - x_detrend[:-1].mean()
     return np.ma.corrcoef(np.ma.array(x_t_centered, mask = np.isnan(x_t_centered)), np.ma.array(x_tm1_centered, mask = np.isnan(x_tm1_centered)))[0,1]
 
-def lambda_window_detrended_nonvec(x):
-    x_detrend = detrend_nonvec(x)
+def lambda_window_detrended_nonvec(x, detrend = True):
+    if detrend:
+        x_detrend = detrend_nonvec(x)
+    else:
+        x_detrend = x
     dxdt = np.diff(x_detrend)
     return np.polyfit(x_detrend[:-1][~np.isnan(dxdt)], dxdt[~np.isnan(dxdt)], 1)[0]
 
@@ -229,9 +238,9 @@ def get_ews(cube, window_size = 500000, downsample_factor = 10000, var_axis = "x
         ar1 = rolling_cube.reduce(ar1_window_detrended, dim = "window", detrend = detrend).to_dataset(name = "AR1")
         l = rolling_cube.reduce(lambda_window_detrended, dim = "window", detrend = detrend).to_dataset(name = "Lambda")
     else:
-        std = xr.apply_ufunc(std_window_detrended_nonvec, rolling_cube, input_core_dims=[["window"]], vectorize = True, dask = "parallelized", output_dtypes=["float64"])
-        ar1 = xr.apply_ufunc(ar1_window_detrended_nonvec, rolling_cube, input_core_dims=[["window"]], vectorize = True, dask = "parallelized", output_dtypes=["float64"])
-        l = xr.apply_ufunc(lambda_window_detrended_nonvec, rolling_cube, input_core_dims=[["window"]], vectorize = True, dask = "parallelized", output_dtypes=["float64"])
+        std = xr.apply_ufunc(std_window_detrended_nonvec, rolling_cube, input_core_dims=[["window"]], vectorize = True, dask = "parallelized", output_dtypes=["float64"], kwargs = {"detrend": detrend}).rename("StdDev")
+        ar1 = xr.apply_ufunc(ar1_window_detrended_nonvec, rolling_cube, input_core_dims=[["window"]], vectorize = True, dask = "parallelized", output_dtypes=["float64"], kwargs = {"detrend": detrend}).rename("AR1")
+        l = xr.apply_ufunc(lambda_window_detrended_nonvec, rolling_cube, input_core_dims=[["window"]], vectorize = True, dask = "parallelized", output_dtypes=["float64"], kwargs = {"detrend": detrend}).rename("Lambda")
 
     return xr.merge([std, ar1, l])
 

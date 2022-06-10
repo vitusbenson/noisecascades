@@ -35,5 +35,15 @@ def estimate_levy_sigma(alpha, gauss_sigma, barrier_height = 0.25, barrier_dista
         levy_sigma = ((barrier_distance**alpha)*2*np.sqrt(2)*gamma(1-alpha)*np.cos(np.pi*alpha/2) / (np.pi*np.exp(1 / ((1/barrier_height) * gauss_sigma**2))))**(1/alpha)
     return levy_sigma
 
+def estimate_levy_sigma_from_fpt(alpha, meanFPT, barrier_distance = 1):
 
+    if alpha == 1.0:
+        sigma = ((barrier_distance*np.pi)/meanFPT)**(1/alpha)
+    else:
+        sigma = (((barrier_distance**alpha)*2*gamma(1-alpha)*np.cos(np.pi*alpha/2))/meanFPT)**(1/alpha)
 
+    return sigma
+
+def estimate_gauss_sigma_from_fpt(meanFPT, barrier_height = 0.25):
+
+    return (barrier_height/np.log(meanFPT*np.sqrt(2)/np.pi))**0.5
