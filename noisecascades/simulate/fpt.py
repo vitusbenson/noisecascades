@@ -2,13 +2,15 @@
 import numpy as np
 from numba import jit
 
-from noisecascades.simulate.step import semi_impl_euler_maruyama_coupled_doublewell_alphastable_step, euler_step, heun_step, semi_impl_cased_step
+from noisecascades.simulate.step import semi_impl_euler_maruyama_coupled_doublewell_alphastable_step, euler_step, heun_step, semi_impl_cased_step, estimate_cased_stability
 
 @jit(nopython = True)
 def simulate_fpt_orthant_logdt(N, x, t, dt, dtao, c, A, L, boundary = 0.0, method = "semi_impl_cased"):
     
     
+    
     for i in range(1,N):
+
 
         if method == "euler":
             x = euler_step(x, dtao[:,i], c, A, L[i,:])
@@ -17,7 +19,8 @@ def simulate_fpt_orthant_logdt(N, x, t, dt, dtao, c, A, L, boundary = 0.0, metho
         elif method == "semi_impl":
             x = semi_impl_euler_maruyama_coupled_doublewell_alphastable_step(x, dtao[:,i], c, A, L[i,:])
         else:
-            x = semi_impl_cased_step(x, dtao[:,i], c, A, L[i,:])
+            limits = estimate_cased_stability(c, dtao[:,i])
+            x = semi_impl_cased_step(x, dtao[:,i], c, A, L[i,:], limits)
 
         t += dt[i]
 
@@ -29,6 +32,9 @@ def simulate_fpt_orthant_logdt(N, x, t, dt, dtao, c, A, L, boundary = 0.0, metho
 
 @jit(nopython = True)
 def simulate_fpt_orthant(N, x, t, dt, dtao, c, A, L, boundary = 0.0, method = "semi_impl_cased"):
+
+    if method == "semi_impl_cased":
+        limits = estimate_cased_stability(c, dtao)
     
     for i in range(1,N):
 
@@ -39,7 +45,7 @@ def simulate_fpt_orthant(N, x, t, dt, dtao, c, A, L, boundary = 0.0, method = "s
         elif method == "semi_impl":
             x = semi_impl_euler_maruyama_coupled_doublewell_alphastable_step(x, dtao, c, A, L[i,:])
         else:
-            x = semi_impl_cased_step(x, dtao, c, A, L[i,:])
+            x = semi_impl_cased_step(x, dtao, c, A, L[i,:], limits)
 
         t += dt
 

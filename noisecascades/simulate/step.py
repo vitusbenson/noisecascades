@@ -94,7 +94,57 @@ def semi_impl_euler_maruyama_coupled_doublewell_alphastable_step(x, dtao, c, A, 
 
 
 @jit(nopython = True)
-def semi_impl_cased_step(x, dtao, c, A, L):
+def estimate_cased_stability(c, dtao):
+    limits = np.zeros((c.shape[0], 2))
+    for i in range(c.shape[0]):
+        dt = dtao[i]
+        dV = np.array([-4*c[i,0], -3*c[i,1], -2*c[i,2], -c[i,3]]).astype(np.complex128)
+        roots_cand = np.roots(dV)
+        roots_cand = roots_cand[(np.abs(roots_cand.imag)<1e-5)]
+        roots_cand = np.sort(np.unique(roots_cand.real))
+        if len(roots_cand) == 3:
+            lower_lim = np.roots(dt * dV + np.array([0,0,1,-roots_cand[0]])).real
+            if len(lower_lim[(lower_lim>roots_cand[0]+1e-5) & (lower_lim<roots_cand[1]-1e-5)]) > 0:
+                lower_lim = lower_lim[(lower_lim>roots_cand[0]+1e-5) & (lower_lim<roots_cand[1]-1e-5)].max()
+                lower_lim = roots_cand[1] + 0.95 * (lower_lim - roots_cand[1])#min(roots_cand[1], 0.95*lower_lim)
+            elif len(lower_lim[lower_lim<roots_cand[0]-1e-5]) > 0:
+                lower_lim = lower_lim[lower_lim<roots_cand[0]-1e-5].max()
+                lower_lim = roots_cand[0] + 0.95 * (lower_lim - roots_cand[0])#min(roots_cand[0], 0.95*lower_lim)
+            else:
+                lower_lim = roots_cand[0]
+                
+            upper_lim = np.roots(dt * dV + np.array([0,0,1,-roots_cand[2]])).real
+            if len(upper_lim[(upper_lim > roots_cand[1]+1e-5) & (upper_lim < roots_cand[2]-1e-5)]) > 0:
+                upper_lim = upper_lim[(upper_lim > roots_cand[1]+1e-5) & (upper_lim < roots_cand[2]-1e-5)].min()
+                upper_lim = roots_cand[1] + 0.95 * (upper_lim - roots_cand[1]) #max(roots_cand[1], 0.95*upper_lim)
+            elif len(upper_lim[upper_lim>roots_cand[2]+1e-5]) > 0:
+                upper_lim = upper_lim[upper_lim>roots_cand[2]+1e-5].min()
+                upper_lim = roots_cand[2] + 0.95 * (upper_lim - roots_cand[2]) #max(roots_cand[2], 0.95*upper_lim)
+            else:
+                upper_lim = roots_cand[2]
+        else:
+            lower_lim = np.roots(dt * dV + np.array([0,0,1,-roots_cand[0]])).real
+            lower_lim = lower_lim[lower_lim < roots_cand[0]-1e-5]
+            if len(lower_lim) > 0:
+                lower_lim = lower_lim.max()
+                lower_lim = roots_cand[0] + 0.95 * (lower_lim - roots_cand[0]) #min(roots_cand[0], 0.95*lower_lim)
+            else:
+                lower_lim = roots_cand[0]
+            upper_lim = np.roots(dt * dV + np.array([0,0,1,-roots_cand[0]])).real
+            upper_lim = upper_lim[upper_lim > roots_cand[0]+1e-5]
+            if len(upper_lim) > 0:
+                upper_lim = upper_lim.min()
+                upper_lim = roots_cand[0] + 0.95 * (upper_lim - roots_cand[0]) #max(roots_cand[0], 0.95*upper_lim)
+            else:
+                upper_lim = roots_cand[0]
+
+        limits[i,0] = lower_lim
+        limits[i,1] = upper_lim
+    
+    return limits
+
+@jit(nopython = True)
+def semi_impl_cased_step(x, dtao, c, A, L, limits):
     """
     V_i(x_i) = c_{i0}*x_i^4 + c_{i1}*x_i^3 + c_{i2}*x_i^2 + c_{i3}*x_i
     dx_i = (- V_i'(x_i) + A@x)*dt/t_i + s_i * dL_{dt/t_i}^{a_i}
@@ -111,11 +161,12 @@ def semi_impl_cased_step(x, dtao, c, A, L):
         transp = 0*x
         
     for j in range(len(x)):
-        if dtao[j] > 0.1:
-            case_boundary = 1.0
-        else:
-            case_boundary = 0.9*(-dtao[j] + np.sqrt(dtao[j]**2 + dtao[j]))/(2*dtao[j])
-        if np.abs(x[j]) <= case_boundary:
+        # if dtao[j] > 0.1:
+        #     case_boundary = 1.0
+        # else:
+        #     case_boundary = 0.9*(-dtao[j] + np.sqrt(dtao[j]**2 + dtao[j]))/(2*dtao[j])
+        # if np.abs(x[j]) <= case_boundary:
+        if (x[j] > limits[j,0]) and (x[j] < limits[j,1]):
             drift = x[j] - (4*c[j,0]*x[j]**3 + 3*c[j,1]*x[j]**2 + 2*c[j,2]*x[j] + (c[j,3] - transp[j]))*dtao[j]
         elif (not np.isnan(x[j])) and (not np.isinf(x[j])):           
             candidates = np.roots(np.array([4*c[j,0]*dtao[j], 3*c[j,1]*dtao[j], 1.0 + 2*c[j,2]*dtao[j], - x[j] + (c[j,3] - transp[j])*dtao[j]]).astype(np.complex128))
