@@ -1,7 +1,7 @@
 setup:
   mode: "fpt_orthant_varyforce"
   n_processes: 1
-  n_nodes: 4p
+  n_nodes: 4
   axes: ["sigmas", "GMTs", "seed"]
   chunks: [1, Null, Null]
   dimension_names: ["fpt", "orthant"]
@@ -21,9 +21,9 @@ base_config:
   alphas: 2.0
   sigmas: 0.0
   seed: 42
-  int_method: "semi_impl"
+  int_method: "semi_impl_cased"
 param_grid:
-  n_seeds: 1000
+  n_seeds: 200
   orthogonal:
     sigmas: [0.1, 0.15, 0.225, 0.35]
     GMTs: [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99, 1.0, 1.01, 1.05, 1.1, 1.2, 1.3]

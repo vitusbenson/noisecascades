@@ -21,9 +21,9 @@ base_config:
   alphas: 1.0
   sigmas: 0.0
   seed: 42
-  int_method: "semi_impl"
+  int_method: "semi_impl_cased"
 param_grid:
-  n_seeds: 1000
+  n_seeds: 200
   orthogonal:
     alphas: [0.5, 1.0, 1.5, 1.75, 1.95]
     sigmas: [1.0e-1, 1.0e-3, 1.0e-5, 1.0e-7]
