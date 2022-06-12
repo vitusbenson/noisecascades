@@ -1,5 +1,5 @@
 setup:
-  mode: "fpt_orthant"
+  mode: "fpt_orthant_varyforce"
   n_processes: 1
   n_nodes: 20
   axes: ["alphas", "sigmas", "GMTs", "seed"]

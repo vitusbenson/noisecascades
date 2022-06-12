@@ -1,7 +1,7 @@
 setup:
-  mode: "fpt_orthant"
+  mode: "fpt_orthant_varyforce"
   n_processes: 1
-  n_nodes: 20
+  n_nodes: 4p
   axes: ["sigmas", "GMTs", "seed"]
   chunks: [1, Null, Null]
   dimension_names: ["fpt", "orthant"]

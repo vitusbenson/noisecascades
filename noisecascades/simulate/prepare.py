@@ -122,6 +122,27 @@ class Integrator:
 
             return ts, xs
 
+        elif mode == "fpt_orthant_varyforce":
+
+            cs = kwargs["cs"]
+            n_chunks = cs.shape[0]
+            N_chunk = N // n_chunks
+
+            x = x_init
+            #xs[0,:] = x
+            t = 0.0
+
+            for i_chunk in range(n_chunks):
+                L_chunk = self.generate_noise(n, N_chunk, dtao, alphas, sigmas, extra_gauss_sigma = kwargs["extra_gauss_sigma"] if "extra_gauss_sigma" in kwargs else None)
+                
+                t, orthant_entered, x = simulate_fpt_orthant(N_chunk, x, t, dt, dtao, cs[i_chunk,:,:], A, L_chunk, boundary = 0.0, method = kwargs["int_method"] if "int_method" in kwargs else "semi_impl_cased")
+
+                if np.any(orthant_entered):
+                    return t, orthant_entered
+
+            return np.NaN, orthant_entered
+
+            
         elif mode == "fpt_orthant":
 
             # TODO: Calculate boundary from c (i.e. get middle sattlepoint from c)

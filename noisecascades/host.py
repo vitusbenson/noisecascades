@@ -87,7 +87,7 @@ class ExperimentHost:
         else:
             pass
             
-        if network_config["mode"] == "varyforce":
+        if network_config["mode"] in ["varyforce","fpt_orthant_varyforce"]:
             if network_config["type"] == "wunderling":
                 GMTs = np.array(network_config["GMTs"])
                 cs = np.stack(len(GMTs)*[network_config["c"]], axis = 0)
