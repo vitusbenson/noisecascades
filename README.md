@@ -5,11 +5,11 @@ Python framework for studying dynamics in double-well potentials under alpha-sta
 ## Installation
 
 ```bash
-conda create -n noisecascades python=3.9
+conda create -n noisecascades python=3.10
 conda deactivate
 conda activate noisecascades
 conda install -c conda-forge mamba
-mamba install -c numpy xarray zarr pyyaml tqdm scipy numba
+mamba install -c conda-forge numpy xarray zarr pyyaml tqdm scipy numba matplotlib seaborn dask
 pip install fire numcodecs
 git clone https://github.com/vitusbenson/noisecascades
 cd noisecascades

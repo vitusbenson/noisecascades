@@ -1,5 +1,6 @@
 
 
+from http.client import NETWORK_AUTHENTICATION_REQUIRED
 import os
 import numpy as np
 import xarray as xr
@@ -84,6 +85,12 @@ class ExperimentHost:
         elif network_config["type"] == "custom":
             network_config["A"] = np.array(network_config["A"])
             network_config["c"] = np.array(network_config["c"])
+
+        elif network_config["type"] == "vannes":
+            network_config["Ps"] = np.linspace(network_config["Pstart"],network_config["Pend"],network_config["Psteps"],endpoint = True)
+            network_config["c"] = np.array([0.0])
+            network_config["A"] = np.array([[0.0]])
+            network_config["taos"] = np.array([1.0])
         else:
             pass
             
@@ -252,7 +259,7 @@ class ExperimentHost:
             else:
                 if axis in orthogonal_grid:
                     coords[axis] = np.array(sorted(orthogonal_grid[axis]))
-                elif axis in ["t", "time"] and self.config["setup"]["mode"] in ["timeseries", "varyforce"]:
+                elif axis in ["t", "time"] and self.config["setup"]["mode"] in ["timeseries", "varyforce", "vannes"]:
                     dt = self.config["base_config"]["dt"] if "dt" in self.config["base_config"] else 10.
                     Tend = self.config["base_config"]["Tend"] if "Tend" in self.config["base_config"] else 100000
                     if isinstance(dt, list):

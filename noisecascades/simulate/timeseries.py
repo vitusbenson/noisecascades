@@ -2,7 +2,7 @@
 from numba import jit
 import numpy as np
 
-from noisecascades.simulate.step import semi_impl_euler_maruyama_coupled_doublewell_alphastable_step, euler_step, heun_step, semi_impl_cased_step, estimate_cased_stability
+from noisecascades.simulate.step import semi_impl_euler_maruyama_coupled_doublewell_alphastable_step, euler_step, heun_step, semi_impl_cased_step, estimate_cased_stability, vannes_euler_step
 
 @jit(nopython = True)
 def simulate_timeseries_logdt(N, x, xs, t, ts, dt, dtao, c, A, L, method = "semi_impl_cased"):
@@ -28,9 +28,22 @@ def simulate_timeseries_logdt(N, x, xs, t, ts, dt, dtao, c, A, L, method = "semi
     return ts, xs
 
 @jit(nopython = True)
+def simulate_vannes(N, x, xs, t, ts, P, Ls, dt = 0.01):
+    x = x[0]
+    xs[0,0] = x
+    ts[0] = t
+    for i in range(N):
+        x = vannes_euler_step(x, P, Ls[i], dt = dt)#[0]
+        xs[i,0] = x
+        t += dt
+        ts[i] = t
+    return ts, xs
+
+@jit(nopython = True)
 def simulate_timeseries(N, x, xs, t, ts, dt, dtao, c, A, L, method = "semi_impl_cased"):
 
     xs[0,:] = x
+    ts[0] = t
 
     if method == "semi_impl_cased":
         limits = estimate_cased_stability(c, dtao)

@@ -3,7 +3,16 @@
 import numpy as np
 from numba import jit
 
-
+@jit(nopython = True)
+def vannes_euler_step(T, P, L, dt):
+    dT = dt * (P/(0.5+P)*0.3*T*(1-T/90) - 0.15*T*10/(T+10) - 0.11*T*64**7/(64**7+T**7))
+    xsol = T + dT
+    nextT = xsol + L
+    if nextT < 0.0:
+        nextT = 0.0
+    elif nextT > 100.0:
+        nextT = 100.0
+    return nextT
 
 @jit(nopython = True)
 def euler_step(x, dtao, c, A, L):

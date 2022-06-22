@@ -2,7 +2,7 @@
 import numpy as np
 from scipy.stats import levy_stable
 
-from noisecascades.simulate.timeseries import simulate_timeseries, simulate_timeseries_logdt, simulate_timeseries_noinit
+from noisecascades.simulate.timeseries import simulate_timeseries, simulate_timeseries_logdt, simulate_timeseries_noinit, simulate_vannes
 from noisecascades.simulate.fpt import simulate_fpt_orthant, simulate_fpt_orthant_logdt
 
 class Integrator:
@@ -95,6 +95,29 @@ class Integrator:
                 ts, xs = simulate_timeseries(N, x_init, xs, t, ts, dt, dtao, c, A, L, method = kwargs["int_method"] if "int_method" in kwargs else "semi_impl_cased")
 
             return ts, xs
+
+        elif mode == "vannes":
+            Ps = kwargs["Ps"]
+            n_chunks = Ps.shape[0] # 451
+            N_chunk = N // n_chunks # 1Mio // 451
+
+            x = x_init
+            xs = np.full((N,n), np.NaN)
+            #xs[0,:] = x
+            t = 0.0
+            ts = np.zeros(N)
+
+            for i_chunk in range(n_chunks):
+                L_chunk = self.generate_noise(n, N_chunk, dtao, alphas, sigmas, extra_gauss_sigma = kwargs["extra_gauss_sigma"] if "extra_gauss_sigma" in kwargs else None)
+                
+                ts[i_chunk*N_chunk:(i_chunk+1)*N_chunk], xs[i_chunk*N_chunk:(i_chunk+1)*N_chunk] = simulate_vannes(N_chunk, x, xs[i_chunk*N_chunk:(i_chunk+1)*N_chunk], t, ts[i_chunk*N_chunk:(i_chunk+1)*N_chunk], Ps[i_chunk], L_chunk[:,0], dt = dt)
+
+                x = xs[(i_chunk+1)*N_chunk -1]
+                t = ts[(i_chunk+1)*N_chunk -1]
+
+            return ts, xs
+
+
 
         elif mode == "varyforce":
 

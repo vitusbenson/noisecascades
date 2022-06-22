@@ -35,7 +35,7 @@ class ExperimentClient:
         coord_idxs = self.get_coord_idxs(network_config)
         vars = self.config["dimension_names"]
 
-        if self.mode in ["timeseries", "varyforce"]:
+        if self.mode in ["timeseries", "varyforce", "vannes"]:
 
             _, xs = results
 
