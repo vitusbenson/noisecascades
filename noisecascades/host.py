@@ -252,7 +252,8 @@ class ExperimentHost:
                 if zip_grid:
                     coords[axis] = range(len(list(zip(*list(zip_grid.values())))))
                     for zip_axis in zip_grid:
-                        coords[zip_axis] = ("zip_id", zip_grid[zip_axis])
+                        # coords[zip_axis] = ("zip_id", zip_grid[zip_axis])
+                        coords[zip_axis] = ("zip_id", [str(i) if not isinstance(i, float) else i for i in zip_grid[zip_axis]])
             elif axis == "seed":
                 if n_seeds > 0:
                     coords[axis] = range(n_seeds)
